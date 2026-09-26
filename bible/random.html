@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Bible Verses</title>
+    <style>
+        :root {
+            --bg: #f5efe3;
+            --panel: #fffdfa;
+            --ink: #231f17;
+            --muted: #6d6558;
+            --line: #ddd4c2;
+            --accent: #7d4f19;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Georgia, serif;
+            background: radial-gradient(circle at top right, #fff7ea, var(--bg));
+            color: var(--ink);
+        }
+
+        h1 {
+            margin: 0 0 10px;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            padding: 14px;
+            border-radius: 10px;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 10px;
+            align-items: end;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px;
+            border: 1px solid #c9bea8;
+            border-radius: 6px;
+            font: inherit;
+            background: #fff;
+            color: var(--ink);
+        }
+
+        button {
+            cursor: pointer;
+            background: var(--accent);
+            color: #fff;
+            border-color: #6b3f0d;
+            font-weight: 600;
+        }
+
+        #status {
+            margin: 12px 0;
+            color: var(--muted);
+        }
+
+        #selectedBooks {
+            margin: 0 0 12px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .verse-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .verse-table td {
+            border-top: 1px solid #eee4d1;
+            padding: 8px 6px;
+            vertical-align: top;
+        }
+
+        .verse-table tr:first-child td {
+            border-top: none;
+        }
+
+        .ref {
+            width: 220px;
+            white-space: nowrap;
+            color: #5e5548;
+            font-size: 14px;
+        }
+
+        .text {
+            line-height: 1.55;
+        }
+
+        #results.hide-refs .ref {
+            display: none;
+        }
+
+        #speakBtn {
+            padding: 8px 12px;
+            cursor: pointer;
+            background: #6b8e6b;
+            color: #fff;
+            border: 1px solid #5a7a5a;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        #speakBtn:hover {
+            background: #7a9d7a;
+        }
+
+        #speakBtn.speaking {
+            background: #d9534f;
+        }
+    </style>
+</head>
+<body>
+    <h1>Random Bible Verse Picker</h1>
+
+    <div class="panel">
+        <div class="controls">
+            <div>
+                <label for="versionSelect">Bible version</label>
+                <select id="versionSelect" aria-label="Bible version">
+                    <option value="kjv">KJV</option>
+                    <option value="korean">Korean</option>
+                    <option value="interlinear">Korean-English-Interlinear</option>
+                </select>
+            </div>
+            <div>
+                <label for="totalVerses">Total random verses</label>
+                <input id="totalVerses" type="number" min="10" value="20">
+            </div>
+            <div>
+                <label for="otVerseCount">Verses from OT</label>
+                <input id="otVerseCount" type="number" min="0" value="10">
+            </div>
+            <div>
+                <label for="ntVerseCount">Verses from NT</label>
+                <input id="ntVerseCount" type="number" min="0" value="10">
+            </div>
+            <div>
+                <button id="pickBtn" type="button">Pick Random Verses</button>
+            </div>
+            <div>
+                <button id="speakBtn" type="button">Speak</button>
+            </div>
+            <div>
+                <label for="hideRefsToggle">Hide verse references</label>
+                <input id="hideRefsToggle" type="checkbox" aria-label="Hide verse references">
+            </div>
+        </div>
+    </div>
+
+    <p id="status">Loading Bible files...</p>
+    <p id="selectedBooks"></p>
+    <div id="results"></div>
+
+    <script>
+        const BOOK_DEFS = [
+            { name: "Genesis", title: "The First Book of Moses: Called Genesis", testament: "OT" },
+            { name: "Exodus", title: "The Second Book of Moses: Called Exodus", testament: "OT" },
+            { name: "Leviticus", title: "The Third Book of Moses: Called Leviticus", testament: "OT" },
+            { name: "Numbers", title: "The Fourth Book of Moses: Called Numbers", testament: "OT" },
+            { name: "Deuteronomy", title: "The Fifth Book of Moses: Called Deuteronomy", testament: "OT" },
+            { name: "Joshua", title: "The Book of Joshua", testament: "OT" },
+            { name: "Judges", title: "The Book of Judges", testament: "OT" },
+            { name: "Ruth", title: "The Book of Ruth", testament: "OT" },
+            { name: "1 Samuel", title: "The First Book of Samuel", testament: "OT" },
+            { name: "2 Samuel", title: "The Second Book of Samuel", testament: "OT" },
+            { name: "1 Kings", title: "The First Book of the Kings", testament: "OT" },
+            { name: "2 Kings", title: "The Second Book of the Kings", testament: "OT" },
+            { name: "1 Chronicles", title: "The First Book of the Chronicles", testament: "OT" },
+            { name: "2 Chronicles", title: "The Second Book of the Chronicles", testament: "OT" },
+            { name: "Ezra", title: "Ezra", testament: "OT" },
+            { name: "Nehemiah", title: "The Book of Nehemiah", testament: "OT" },
+            { name: "Esther", title: "The Book of Esther", testament: "OT" },
+            { name: "Job", title: "The Book of Job", testament: "OT" },
+            { name: "Psalms", title: "The Book of Psalms", testament: "OT" },
+            { name: "Proverbs", title: "The Proverbs", testament: "OT" },
+            { name: "Ecclesiastes", title: "Ecclesiastes", testament: "OT" },
+            { name: "Song of Solomon", title: "The Song of Solomon", testament: "OT" },
+            { name: "Isaiah", title: "The Book of the Prophet Isaiah", testament: "OT" },
+            { name: "Jeremiah", title: "The Book of the Prophet Jeremiah", testament: "OT" },
+            { name: "Lamentations", title: "The Lamentations of Jeremiah", testament: "OT" },
+            { name: "Ezekiel", title: "The Book of the Prophet Ezekiel", testament: "OT" },
+            { name: "Daniel", title: "The Book of Daniel", testament: "OT" },
+            { name: "Hosea", title: "Hosea", testament: "OT" },
+            { name: "Joel", title: "Joel", testament: "OT" },
+            { name: "Amos", title: "Amos", testament: "OT" },
+            { name: "Obadiah", title: "Obadiah", testament: "OT" },
+            { name: "Jonah", title: "Jonah", testament: "OT" },
+            { name: "Micah", title: "Micah", testament: "OT" },
+            { name: "Nahum", title: "Nahum", testament: "OT" },
+            { name: "Habakkuk", title: "Habakkuk", testament: "OT" },
+            { name: "Zephaniah", title: "Zephaniah", testament: "OT" },
+            { name: "Haggai", title: "Haggai", testament: "OT" },
+            { name: "Zechariah", title: "Zechariah", testament: "OT" },
+            { name: "Malachi", title: "Malachi", testament: "OT" },
+            { name: "Matthew", title: "The Gospel According to Saint Matthew", testament: "NT" },
+            { name: "Mark", title: "The Gospel According to Saint Mark", testament: "NT" },
+            { name: "Luke", title: "The Gospel According to Saint Luke", testament: "NT" },
+            { name: "John", title: "The Gospel According to Saint John", testament: "NT" },
+            { name: "Acts", title: "The Acts of the Apostles", testament: "NT" },
+            { name: "Romans", title: "The Epistle of Paul the Apostle to the Romans", testament: "NT" },
+            { name: "1 Corinthians", title: "The First Epistle of Paul the Apostle to the Corinthians", testament: "NT" },
+            { name: "2 Corinthians", title: "The Second Epistle of Paul the Apostle to the Corinthians", testament: "NT" },
+            { name: "Galatians", title: "The Epistle of Paul the Apostle to the Galatians", testament: "NT" },
+            { name: "Ephesians", title: "The Epistle of Paul the Apostle to the Ephesians", testament: "NT" },
+            { name: "Philippians", title: "The Epistle of Paul the Apostle to the Philippians", testament: "NT" },
+            { name: "Colossians", title: "The Epistle of Paul the Apostle to the Colossians", testament: "NT" },
+            { name: "1 Thessalonians", title: "The First Epistle of Paul the Apostle to the Thessalonians", testament: "NT" },
+            { name: "2 Thessalonians", title: "The Second Epistle of Paul the Apostle to the Thessalonians", testament: "NT" },
+            { name: "1 Timothy", title: "The First Epistle of Paul the Apostle to Timothy", testament: "NT" },
+            { name: "2 Timothy", title: "The Second Epistle of Paul the Apostle to Timothy", testament: "NT" },
+            { name: "Titus", title: "The Epistle of Paul the Apostle to Titus", testament: "NT" },
+            { name: "Philemon", title: "The Epistle of Paul the Apostle to Philemon", testament: "NT" },
+            { name: "Hebrews", title: "The Epistle of Paul the Apostle to the Hebrews", testament: "NT" },
+            { name: "James", title: "The General Epistle of James", testament: "NT" },
+            { name: "1 Peter", title: "The First Epistle General of Peter", testament: "NT" },
+            { name: "2 Peter", title: "The Second General Epistle of Peter", testament: "NT" },
+            { name: "1 John", title: "The First Epistle General of John", testament: "NT" },
+            { name: "2 John", title: "The Second Epistle General of John", testament: "NT" },
+            { name: "3 John", title: "The Third Epistle General of John", testament: "NT" },
+            { name: "Jude", title: "The General Epistle of Jude", testament: "NT" },
+            { name: "Revelation", title: "The Revelation of Saint John the Divine", testament: "NT" }
+        ];
+
+        const KOREAN_BOOK_DEFS = [
+            { name: "창세기", code: "창", testament: "OT" },
+            { name: "출애굽기", code: "출", testament: "OT" },
+            { name: "레위기", code: "레", testament: "OT" },
+            { name: "민수기", code: "민", testament: "OT" },
+            { name: "신명기", code: "신", testament: "OT" },
+            { name: "여호수아", code: "수", testament: "OT" },
+            { name: "사사기", code: "삿", testament: "OT" },
+            { name: "룻기", code: "룻", testament: "OT" },
+            { name: "사무엘상", code: "삼상", testament: "OT" },
+            { name: "사무엘하", code: "삼하", testament: "OT" },
+            { name: "열왕기상", code: "왕상", testament: "OT" },
+            { name: "열왕기하", code: "왕하", testament: "OT" },
+            { name: "역대상", code: "대상", testament: "OT" },
+            { name: "역대하", code: "대하", testament: "OT" },
+            { name: "에스라", code: "스", testament: "OT" },
+            { name: "느헤미야", code: "느", testament: "OT" },
+            { name: "에스더", code: "에", testament: "OT" },
+            { name: "욥기", code: "욥", testament: "OT" },
+            { name: "시편", code: "시", testament: "OT" },
+            { name: "잠언", code: "잠", testament: "OT" },
+            { name: "전도서", code: "전", testament: "OT" },
+            { name: "아가", code: "아", testament: "OT" },
+            { name: "이사야", code: "사", testament: "OT" },
+            { name: "예레미야", code: "렘", testament: "OT" },
+            { name: "예레미야애가", code: "애", testament: "OT" },
+            { name: "에스겔", code: "겔", testament: "OT" },
+            { name: "다니엘", code: "단", testament: "OT" },
+            { name: "호세아", code: "호", testament: "OT" },
+            { name: "요엘", code: "욜", testament: "OT" },
+            { name: "아모스", code: "암", testament: "OT" },
+            { name: "오바댜", code: "옵", testament: "OT" },
+            { name: "요나", code: "욘", testament: "OT" },
+            { name: "미가", code: "미", testament: "OT" },
+            { name: "나훔", code: "나", testament: "OT" },
+            { name: "하박국", code: "합", testament: "OT" },
+            { name: "스바냐", code: "습", testament: "OT" },
+            { name: "학개", code: "학", testament: "OT" },
+            { name: "스가랴", code: "슥", testament: "OT" },
+            { name: "말라기", code: "말", testament: "OT" },
+            { name: "마태복음", code: "마", testament: "NT" },
+            { name: "마가복음", code: "막", testament: "NT" },
+            { name: "누가복음", code: "눅", testament: "NT" },
+            { name: "요한복음", code: "요", testament: "NT" },
+            { name: "사도행전", code: "행", testament: "NT" },
+            { name: "로마서", code: "롬", testament: "NT" },
+            { name: "고린도전서", code: "고전", testament: "NT" },
+            { name: "고린도후서", code: "고후", testament: "NT" },
+            { name: "갈라디아서", code: "갈", testament: "NT" },
+            { name: "에베소서", code: "엡", testament: "NT" },
+            { name: "빌립보서", code: "빌", testament: "NT" },
+            { name: "골로새서", code: "골", testament: "NT" },
+            { name: "데살로니가전서", code: "살전", testament: "NT" },
+            { name: "데살로니가후서", code: "살후", testament: "NT" },
+            { name: "디모데전서", code: "딤전", testament: "NT" },
+            { name: "디모데후서", code: "딤후", testament: "NT" },
+            { name: "디도서", code: "딛", testament: "NT" },
+            { name: "빌레몬서", code: "몬", testament: "NT" },
+            { name: "히브리서", code: "히", testament: "NT" },
+            { name: "야고보서", code: "약", testament: "NT" },
+            { name: "베드로전서", code: "벧전", testament: "NT" },
+            { name: "베드로후서", code: "벧후", testament: "NT" },
+            { name: "요한일서", code: "요일", testament: "NT" },
+            { name: "요한이서", code: "요이", testament: "NT" },
+            { name: "요한삼서", code: "요삼", testament: "NT" },
+            { name: "유다서", code: "유", testament: "NT" },
+            { name: "요한계시록", code: "계", testament: "NT" }
+        ];
+
+        const poolsByVersion = {
+            kjv: [],
+            korean: [],
+            interlinear: []
+        };
+
+        function getSecondHeadingLineIndex(lines, heading) {
+            let seen = 0;
+
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].trim() === heading) {
+                    seen += 1;
+                    if (seen === 2) {
+                        return i;
+                    }
+                }
+            }
+
+            return -1;
+        }
+
+        function parseBookVersePool(lines, currentTitle, nextTitle) {
+            const startLineIndex = getSecondHeadingLineIndex(lines, currentTitle);
+            if (startLineIndex === -1) {
+                throw new Error(`${currentTitle} not found in kjv.txt`);
+            }
+
+            let endLineIndex = lines.length;
+            if (nextTitle) {
+                const nextLineIndex = getSecondHeadingLineIndex(lines, nextTitle);
+                if (nextLineIndex !== -1 && nextLineIndex > startLineIndex) {
+                    endLineIndex = nextLineIndex;
+                }
+            }
+
+            const block = lines
+                .slice(startLineIndex + 1, endLineIndex)
+                .join("\n");
+
+            const verseRegex = /(\d+):(\d+)/g;
+            const matches = [...block.matchAll(verseRegex)];
+            const verses = [];
+
+            for (let i = 0; i < matches.length; i++) {
+                const current = matches[i];
+                const next = matches[i + 1];
+                const verseStart = current.index;
+                const verseEnd = next ? next.index : block.length;
+                const chunk = block.substring(verseStart, verseEnd).trim();
+                const firstSpace = chunk.indexOf(" ");
+                if (firstSpace === -1) {
+                    continue;
+                }
+
+                const cv = chunk.substring(0, firstSpace);
+                const text = chunk.substring(firstSpace + 1)
+                    .replace(/\r/g, "")
+                    .replace(/\n+/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+                const parts = cv.split(":");
+                if (parts.length !== 2) {
+                    continue;
+                }
+
+                const chapter = Number(parts[0]);
+                const verse = Number(parts[1]);
+                if (!Number.isFinite(chapter) || !Number.isFinite(verse)) {
+                    continue;
+                }
+
+                verses.push({ chapter, verse, text });
+            }
+
+            return verses;
+        }
+
+        function parseKoreanVersePools(rawKorean) {
+            const lines = rawKorean.split("\n");
+            const tokenOrder = [];
+            const byToken = new Map();
+            let currentToken = "";
+            let currentChapter = -1;
+            let currentVerse = -1;
+
+            const verseLineRegex = /^([^\d\s:]{1,6})(\d+):(\d+)\s*(.*)$/;
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) {
+                    continue;
+                }
+
+                const match = trimmed.match(verseLineRegex);
+                if (match) {
+                    const token = match[1];
+                    const chapter = Number(match[2]);
+                    const verse = Number(match[3]);
+                    const text = (match[4] || "").trim();
+
+                    if (!byToken.has(token)) {
+                        byToken.set(token, []);
+                        tokenOrder.push(token);
+                    }
+
+                    currentToken = token;
+                    currentChapter = chapter;
+                    currentVerse = verse;
+
+                    const pool = byToken.get(currentToken);
+                    pool.push({ chapter, verse, text });
+                    continue;
+                }
+
+                if (currentToken && currentChapter > 0 && currentVerse > 0) {
+                    const pool = byToken.get(currentToken);
+                    const last = pool[pool.length - 1];
+                    if (last) {
+                        last.text = `${last.text} ${trimmed}`.trim();
+                    }
+                }
+            }
+
+            const parsed = [];
+            for (let i = 0; i < tokenOrder.length; i++) {
+                const token = tokenOrder[i];
+                const def = KOREAN_BOOK_DEFS[i];
+                parsed.push({
+                    name: def ? def.name : `책 ${i + 1}`,
+                    testament: def ? def.testament : (i < 39 ? "OT" : "NT"),
+                    verses: byToken.get(token) || []
+                });
+            }
+
+            return parsed;
+        }
+
+        function sampleWithoutReplacement(arr, count) {
+            const copy = [...arr];
+            for (let i = copy.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [copy[i], copy[j]] = [copy[j], copy[i]];
+            }
+            return copy.slice(0, count);
+        }
+
+        function pickOne(arr) {
+            return arr[Math.floor(Math.random() * arr.length)];
+        }
+
+        function validateInputs(total, otVerses, ntVerses) {
+            if (total < 10) {
+                return "Total random verses must be at least 10.";
+            }
+            if (otVerses + ntVerses !== total) {
+                return "OT verses + NT verses must equal total verses.";
+            }
+            if (otVerses < 0 || ntVerses < 0) {
+                return "Counts cannot be negative.";
+            }
+            return "";
+        }
+
+        function renderResults(selectedBooks, selectedVerses) {
+            const selectedBooksEl = document.getElementById("selectedBooks");
+            selectedBooksEl.textContent =
+                "Selected books: " + selectedBooks.map((b) => b.name).join(", ");
+
+            const results = document.getElementById("results");
+            results.innerHTML = "";
+            results.classList.toggle(
+                "hide-refs",
+                document.getElementById("hideRefsToggle").checked
+            );
+
+            const table = document.createElement("table");
+            table.className = "verse-table";
+            const tbody = document.createElement("tbody");
+            table.appendChild(tbody);
+
+            const version = document.getElementById("versionSelect").value;
+
+            for (const item of selectedVerses) {
+                if (version === "interlinear") {
+                    if (item.enText) {
+                        const enRow = document.createElement("tr");
+                        const enRef = document.createElement("td");
+                        const enTxt = document.createElement("td");
+
+                        enRef.className = "ref";
+                        enRef.textContent = `${item.enBook} ${item.chapter}:${item.verse}`;
+                        enTxt.className = "text";
+                        enTxt.textContent = item.enText;
+
+                        enRow.appendChild(enRef);
+                        enRow.appendChild(enTxt);
+                        tbody.appendChild(enRow);
+                    }
+
+                    if (item.koText) {
+                        const koRow = document.createElement("tr");
+                        const koRef = document.createElement("td");
+                        const koTxt = document.createElement("td");
+
+                        koRef.className = "ref";
+                        koRef.textContent = `${item.koBook} ${item.chapter}:${item.verse}`;
+                        koTxt.className = "text";
+                        koTxt.textContent = item.koText;
+
+                        koRow.appendChild(koRef);
+                        koRow.appendChild(koTxt);
+                        tbody.appendChild(koRow);
+                    }
+                } else {
+                    const row = document.createElement("tr");
+                    const ref = document.createElement("td");
+                    const txt = document.createElement("td");
+
+                    ref.className = "ref";
+                    ref.textContent = `${item.book} ${item.chapter}:${item.verse}`;
+
+                    txt.className = "text";
+                    txt.textContent = item.text;
+
+                    row.appendChild(ref);
+                    row.appendChild(txt);
+                    tbody.appendChild(row);
+                }
+            }
+
+            results.appendChild(table);
+        }
+
+        async function loadData() {
+            const res = await fetch("kjv.txt");
+            const koreanRes = await fetch("korean-bible.txt");
+
+            if (!res.ok) {
+                throw new Error("Could not load kjv.txt");
+            }
+
+            if (!koreanRes.ok) {
+                throw new Error("Could not load korean-bible.txt");
+            }
+
+            const raw = await res.text();
+            const lines = raw.split("\n");
+
+            const koreanBytes = await koreanRes.arrayBuffer();
+            let rawKorean = "";
+            try {
+                rawKorean = new TextDecoder("euc-kr").decode(koreanBytes);
+            } catch (_error) {
+                rawKorean = new TextDecoder().decode(koreanBytes);
+            }
+
+            for (let i = 0; i < BOOK_DEFS.length; i++) {
+                const current = BOOK_DEFS[i];
+                const next = BOOK_DEFS[i + 1];
+                const verses = parseBookVersePool(lines, current.title, next ? next.title : null);
+                poolsByVersion.kjv.push({
+                    name: current.name,
+                    testament: current.testament,
+                    verses
+                });
+            }
+
+            poolsByVersion.korean = parseKoreanVersePools(rawKorean);
+
+            const pairCount = Math.min(poolsByVersion.kjv.length, poolsByVersion.korean.length);
+            for (let i = 0; i < pairCount; i++) {
+                const enBook = poolsByVersion.kjv[i];
+                const koBook = poolsByVersion.korean[i];
+
+                const verseMap = new Map();
+
+                for (const v of enBook.verses) {
+                    const key = `${v.chapter}:${v.verse}`;
+                    verseMap.set(key, {
+                        chapter: v.chapter,
+                        verse: v.verse,
+                        enText: v.text,
+                        koText: "",
+                        enBook: enBook.name,
+                        koBook: koBook.name
+                    });
+                }
+
+                for (const v of koBook.verses) {
+                    const key = `${v.chapter}:${v.verse}`;
+                    if (!verseMap.has(key)) {
+                        verseMap.set(key, {
+                            chapter: v.chapter,
+                            verse: v.verse,
+                            enText: "",
+                            koText: v.text,
+                            enBook: enBook.name,
+                            koBook: koBook.name
+                        });
+                    } else {
+                        verseMap.get(key).koText = v.text;
+                    }
+                }
+
+                poolsByVersion.interlinear.push({
+                    name: `${enBook.name} / ${koBook.name}`,
+                    testament: enBook.testament,
+                    verses: Array.from(verseMap.values())
+                });
+            }
+        }
+
+        function pickRandomVerses() {
+            const OT_BOOKS_COUNT = 5;
+            const NT_BOOKS_COUNT = 5;
+            const version = document.getElementById("versionSelect").value;
+            const pools = poolsByVersion[version] || [];
+
+            const total = Number(document.getElementById("totalVerses").value);
+            const otVersesCount = Number(document.getElementById("otVerseCount").value);
+            const ntVersesCount = Number(document.getElementById("ntVerseCount").value);
+
+            const error = validateInputs(total, otVersesCount, ntVersesCount);
+            const status = document.getElementById("status");
+            if (error) {
+                status.textContent = error;
+                return;
+            }
+
+            const otBooks = pools.filter((b) => b.testament === "OT" && b.verses.length > 0);
+            const ntBooks = pools.filter((b) => b.testament === "NT" && b.verses.length > 0);
+
+            if (OT_BOOKS_COUNT > otBooks.length || NT_BOOKS_COUNT > ntBooks.length) {
+                status.textContent = "Not enough books with parsed verse data for that split.";
+                return;
+            }
+
+            const chosenOTBooks = sampleWithoutReplacement(otBooks, OT_BOOKS_COUNT);
+            const chosenNTBooks = sampleWithoutReplacement(ntBooks, NT_BOOKS_COUNT);
+            const selectedBooks = [...chosenOTBooks, ...chosenNTBooks];
+
+            const otChosenVerses = [];
+            const ntChosenVerses = [];
+
+            // Ensure each chosen book contributes at least one verse if possible.
+            if (otVersesCount < chosenOTBooks.length || ntVersesCount < chosenNTBooks.length) {
+                status.textContent = "Verse counts must be at least the number of selected books for each testament.";
+                return;
+            }
+
+            for (const book of chosenOTBooks) {
+                const v = pickOne(book.verses);
+                if (version === "interlinear") {
+                    otChosenVerses.push({
+                        chapter: v.chapter,
+                        verse: v.verse,
+                        enText: v.enText,
+                        koText: v.koText,
+                        enBook: v.enBook,
+                        koBook: v.koBook
+                    });
+                } else {
+                    otChosenVerses.push({ book: book.name, chapter: v.chapter, verse: v.verse, text: v.text });
+                }
+            }
+            for (const book of chosenNTBooks) {
+                const v = pickOne(book.verses);
+                if (version === "interlinear") {
+                    ntChosenVerses.push({
+                        chapter: v.chapter,
+                        verse: v.verse,
+                        enText: v.enText,
+                        koText: v.koText,
+                        enBook: v.enBook,
+                        koBook: v.koBook
+                    });
+                } else {
+                    ntChosenVerses.push({ book: book.name, chapter: v.chapter, verse: v.verse, text: v.text });
+                }
+            }
+
+            while (otChosenVerses.length < otVersesCount) {
+                const book = pickOne(chosenOTBooks);
+                const v = pickOne(book.verses);
+                if (version === "interlinear") {
+                    otChosenVerses.push({
+                        chapter: v.chapter,
+                        verse: v.verse,
+                        enText: v.enText,
+                        koText: v.koText,
+                        enBook: v.enBook,
+                        koBook: v.koBook
+                    });
+                } else {
+                    otChosenVerses.push({ book: book.name, chapter: v.chapter, verse: v.verse, text: v.text });
+                }
+            }
+
+            while (ntChosenVerses.length < ntVersesCount) {
+                const book = pickOne(chosenNTBooks);
+                const v = pickOne(book.verses);
+                if (version === "interlinear") {
+                    ntChosenVerses.push({
+                        chapter: v.chapter,
+                        verse: v.verse,
+                        enText: v.enText,
+                        koText: v.koText,
+                        enBook: v.enBook,
+                        koBook: v.koBook
+                    });
+                } else {
+                    ntChosenVerses.push({ book: book.name, chapter: v.chapter, verse: v.verse, text: v.text });
+                }
+            }
+
+            const merged = [...otChosenVerses, ...ntChosenVerses];
+            const shuffled = sampleWithoutReplacement(merged, merged.length);
+
+            status.textContent = `Picked ${shuffled.length} verses from ${selectedBooks.length} books.`;
+            renderResults(selectedBooks, shuffled);
+        }
+
+        function getFemaleVoice(language) {
+            const voices = window.speechSynthesis.getVoices();
+            const langFilter = language === "ko" ? "ko" : "en";
+            const filtered = voices.filter((v) => v.lang.startsWith(langFilter));
+            const femaleVoices = filtered.filter((v) => v.name.toLowerCase().includes("female") || v.name.toLowerCase().includes("woman") || v.name.toLowerCase().includes("samantha") || v.name.toLowerCase().includes("zira"));
+            return femaleVoices.length > 0 ? femaleVoices[0] : filtered[0];
+        }
+
+        function speakVerses() {
+            const speakBtn = document.getElementById("speakBtn");
+            const version = document.getElementById("versionSelect").value;
+            const resultsEl = document.getElementById("results");
+
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+                speakBtn.classList.remove("speaking");
+                speakBtn.textContent = "Speak";
+                return;
+            }
+
+            const refCells = resultsEl.querySelectorAll(".ref");
+            const textCells = resultsEl.querySelectorAll(".text");
+
+            if (refCells.length === 0) {
+                return;
+            }
+
+            let currentIdx = 0;
+
+            function speakNext() {
+                if (currentIdx >= refCells.length) {
+                    speakBtn.classList.remove("speaking");
+                    speakBtn.textContent = "Speak";
+                    return;
+                }
+
+                const ref = refCells[currentIdx].textContent;
+                const text = textCells[currentIdx].textContent;
+                const fullText = text;
+
+                const langCode = ref.includes("창") || ref.includes("한") || ref.includes("고") || version === "korean" ? "ko" : "en";
+                const utterance = new SpeechSynthesisUtterance(fullText);
+                const voice = getFemaleVoice(langCode);
+                if (voice) {
+                    utterance.voice = voice;
+                }
+                utterance.rate = 1;
+                utterance.pitch = 1.2;
+
+                utterance.onend = function () {
+                    currentIdx++;
+                    speakNext();
+                };
+
+                utterance.onerror = function () {
+                    currentIdx++;
+                    speakNext();
+                };
+
+                window.speechSynthesis.speak(utterance);
+            }
+
+            speakBtn.classList.add("speaking");
+            speakBtn.textContent = "Stop";
+            speakNext();
+        }
+
+        document.getElementById("pickBtn").addEventListener("click", pickRandomVerses);
+        document.getElementById("hideRefsToggle").addEventListener("change", pickRandomVerses);
+        document.getElementById("versionSelect").addEventListener("change", pickRandomVerses);
+        document.getElementById("speakBtn").addEventListener("click", speakVerses);
+
+        loadData()
+            .then(() => {
+                document.getElementById("status").textContent = "Ready. Choose settings and click Pick Random Verses.";
+                pickRandomVerses();
+            })
+            .catch((error) => {
+                document.getElementById("status").textContent = `Error: ${error.message}`;
+            });
+    </script>
+</body>
+</html>

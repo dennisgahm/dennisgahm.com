@@ -1,0 +1,37 @@
+<html>
+  <head>
+    <style>
+      body {
+	  font-size: 24px;
+      }
+      </style>
+  </head>
+  <body>
+  <h1>Writings</h1>
+      <h2>General</h2>
+    <a href="writings/thesis.html">Thesis</a><span> | </span>
+    <a href="writings/bio.html">Bio</a><span> | </span>
+    <a href="writings/diary.html">Diary</a><span> | </span>
+    <a href="writings/faith-seminary/index.html">Faith Seminary</a><span> | </span>
+    <a href="writings/the-way-to-salvation.html">The Way to Salvation</a><span> | </span>
+    <a href="writings/money.html">Money</a><span> | </span>
+    <a href="writings/gospel.html">The Gospel According to Dennis Gahm</a> | 
+    <a href="writings/comedy.html">Comedy</a> | 
+    <a href="writings/business.html">Business</a | >
+
+        <h2>Research</h2>
+    <a href="writings/research/index.html">My Research</a>
+
+    
+    <h2>Computer Science</h2>
+    <a href="writings/gods-algorithm.html">God's Algorithm</a>
+
+    
+    <h2>Letters</h2>
+    <a href="writings/letters/churches.html">To The 12 Churches</a>
+
+    <h2>Prayers</h2>
+    <a href="writings/prayers.html">Prayers</a>
+    
+  </body>
+  </html>
