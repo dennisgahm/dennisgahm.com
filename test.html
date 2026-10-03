@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collapsible Text</title>
+  <style>
+    body {
+      max-width: 600px;
+      margin: 60px auto;
+      padding: 0 20px;
+      font-family: Arial, sans-serif;
+      color: #222;
+    }
+
+    details {
+      padding: 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #f8f9fa;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    details[open] summary {
+      margin-bottom: 12px;
+    }
+
+    p {
+      margin: 0;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <h1>Collapsible Text Example</h1>
+
+  <details>
+    <summary>Show more information</summary>
+    <p>
+      This text is hidden by default. Click the heading again
+      to collapse it. No JavaScript is needed!
+    </p>
+  </details>
+</body>
+</html>

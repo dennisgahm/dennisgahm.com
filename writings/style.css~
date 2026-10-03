@@ -1,0 +1,14 @@
+table {
+  width: 50%;
+  border-collapse: collapse;
+}
+
+td {
+  font-size: 24px;
+  line-height: 2;
+  border: 0px solid black;
+}
+
+p {
+  text-indent: 2em;
+}
